@@ -1112,7 +1112,7 @@ body.fullscreen #gid-bar{bottom:20px}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 'use strict';
-const APP_VER='v66'; // ← súbelo en cada despliegue para comprobar que el iPad se ha actualizado
+const APP_VER='v67'; // ← súbelo en cada despliegue para comprobar que el iPad se ha actualizado
 console.log('LecturaPDF',APP_VER);
 
 /* ══ MARCADOR DE VERSIÓN ══
@@ -4703,28 +4703,46 @@ async function autoUpdateEnts(kind){
    mismo panel, sin distinción de origen. El formulario de inserción manual va
    siempre arriba; el orden dentro de cada tema no cambia (glosario alfabético,
    conclusiones por página). */
+/* Filtro por tema del panel. Es el MISMO desplegable de arriba: además de
+   asignar el tema al insertar manualmente, filtra el listado por tema.
+   '__all__' = TODO (ver todo). Se recuerda por tipo (glosario / conclusiones). */
+const entThemeFilter={glos:'__all__',conc:'__all__'};
+
 function renderEnts(kind){
   const K=ENT_KINDS[kind];
   const body=document.getElementById(kind==='glos'?'glossary-body':'conclusions-body');
   body.innerHTML='';
-  const items=loadEnts(kind);
 
-  /* Selector de Tema: reutiliza los Temas que ya existen (mismo sistema que
-     agrupa las fichas). "Sin tema" = value vacío. Va ANTES del contenido. */
+  /* Si el tema elegido en el filtro fue borrado, se vuelve a TODO. */
+  let flt=entThemeFilter[kind];
+  if(flt!=='__all__'&&flt!==''&&!themeById(flt)){flt='__all__';entThemeFilter[kind]='__all__'}
+
+  /* Tras autoUpdateEnts tanto las manuales como las automáticas llevan themeId
+     (a las automáticas se lo copia autoUpdateEnts desde el mapa de temas), así
+     que se puede filtrar por g.themeId de forma uniforme. '' = sin tema. */
+  let items=loadEnts(kind);
+  if(flt!=='__all__')items=items.filter(g=>((g.themeId||'')===flt));
+
+  /* Desplegable de Tema: hace DOS cosas → filtra el listado por tema y, al
+     añadir una entrada manual, le asigna ese tema. TODO / Sin tema = sin tema. */
   {
     const themesM=loadThemes().sort((a,b)=>(a.num||0)-(b.num||0));
     const sel=document.createElement('select');sel.className='glos-manual-add-theme';
-    const optNone=document.createElement('option');optNone.value='';optNone.textContent='Sin tema';
-    sel.appendChild(optNone);
+    const optAll=document.createElement('option');optAll.value='__all__';optAll.textContent='TODO';sel.appendChild(optAll);
+    const optNone=document.createElement('option');optNone.value='';optNone.textContent='Sin tema';sel.appendChild(optNone);
     themesM.forEach(t=>{const o=document.createElement('option');o.value=t.id;
       o.textContent=(t.num?t.num+' · ':'')+(t.name||'Tema');sel.appendChild(o)});
+    sel.value=flt;
+    sel.onchange=()=>{entThemeFilter[kind]=sel.value;renderEnts(kind)};
     body.appendChild(sel);
 
     const addRow=document.createElement('div');addRow.className='glos-manual-add';
     const inp=document.createElement('input');inp.placeholder='Añadir entrada manual';
     const btn=document.createElement('button');btn.textContent='＋';
-    const add=()=>{const t=inp.value.trim();if(!t)return;const a=loadEnts(kind);
-      a.push({id:uid(),title:firstWords(t,K.words),body:t,page:curPid(),color:K.dot,manual:true,themeId:sel.value||null});
+    const add=()=>{const t=inp.value.trim();if(!t)return;
+      const newTid=(flt&&flt!=='__all__')?flt:null;   // TODO / Sin tema → entrada sin tema
+      const a=loadEnts(kind);
+      a.push({id:uid(),title:firstWords(t,K.words),body:t,page:curPid(),color:K.dot,manual:true,themeId:newTid});
       saveEnts(kind,a);inp.value='';renderEnts(kind);renderPageAnchors()};
     btn.onclick=add;inp.addEventListener('keydown',e=>{if(e.key==='Enter')add()});
     addRow.append(inp,btn);body.appendChild(addRow);
@@ -4732,7 +4750,9 @@ function renderEnts(kind){
 
   if(!items.length){
     const em=document.createElement('div');em.className='np-empty';
-    em.textContent=K.empty;
+    em.textContent = flt==='__all__' ? K.empty
+                   : flt==='' ? 'No hay entradas sin tema.'
+                   : 'No hay entradas en este tema.';
     body.appendChild(em);return;
   }
 
@@ -4851,9 +4871,9 @@ function buildEntCard(kind,g){
     if(!d)return;
     const a=loadEnts(kind);const it=a.find(x=>x.gid===g.gid||x.id===g.id);
     if(it){it.title=d.title;it.body=d.text;it.edited=true;
-      if(!g.auto)it.themeId=d.themeId||null;   // manual: el tema se guarda en la ficha
+      it.themeId=d.themeId||null;   // manual y automática: así el listado se reagrupa/filtra al momento
       saveEnts(kind,a);}
-    if(g.auto&&g.gid){                          // automática: el tema se guarda en el mapa
+    if(g.auto&&g.gid){              // automática: además, persistir en el mapa (sobrevive a la reconstrucción)
       const tmap=loadThemeMap();
       if(d.themeId)tmap[g.gid]=d.themeId; else delete tmap[g.gid];
       saveThemeMap(tmap);
