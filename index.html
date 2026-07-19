@@ -382,13 +382,32 @@ body.fullscreen #rd-bottom-show{display:none}
 .node-body.open{display:block}
 .node-desc{font-size:13px;color:var(--ink2);line-height:1.45;margin-bottom:8px;white-space:pre-wrap;word-break:break-word}
 .node-sub{border-left:2px solid var(--border);padding-left:10px;margin-bottom:6px}
-.node-sub-item{padding:5px 4px;border-bottom:1px solid var(--border);cursor:pointer}
+.node-sub-item{padding:6px 4px;border-bottom:1px solid var(--border)}
 .node-sub-item:last-child{border-bottom:none}
-.node-sub-title{font-size:13px;font-weight:500;color:var(--ink)}
-.node-sub-desc{font-size:12px;color:var(--ink2);line-height:1.4;margin-top:2px;display:none;white-space:pre-wrap;word-break:break-word}
-.node-sub-desc.open{display:block}
-.node-sub-sub{border-left:2px solid var(--border);padding-left:8px;margin-top:4px}
-.node-sub-sub-item{font-size:12px;color:var(--ink2);padding:3px 2px;cursor:pointer}
+.node-sub-title{font-size:13px;font-weight:600;color:var(--ink);word-break:break-word}
+/* la explicación del subnivel es AHORA visible siempre (antes se ocultaba) */
+.node-sub-desc{font-size:12.5px;color:var(--ink2);line-height:1.45;margin-top:3px;white-space:pre-wrap;word-break:break-word}
+.node-sub-sub{border-left:2px solid var(--border);padding-left:9px;margin:6px 0 2px 3px}
+.node-sub-acts{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.node-sub-acts button{font-size:11px;padding:5px 10px;border:none;border-radius:8px;background:var(--bg2);color:var(--ink);cursor:pointer;font-family:inherit;touch-action:manipulation;white-space:nowrap}
+.node-sub-acts button.deep{background:var(--lila)}
+.node-sub-acts button.del{color:var(--danger)}
+
+/* ═══ TEXTO CON FORMATO (negrita, listas, color…) reutilizable ═══ */
+.rich-content ul{list-style:disc;padding-left:20px;margin:4px 0}
+.rich-content ol{list-style:decimal;padding-left:22px;margin:4px 0}
+.rich-content li{margin:2px 0}
+.rich-content b,.rich-content strong{font-weight:700}
+.rich-content i,.rich-content em{font-style:italic}
+.rich-content u{text-decoration:underline}
+.rich-content a{color:#3a7afe;text-decoration:underline}
+/* barra de formato + área editable en los modales */
+.rich-tb{display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-bottom:6px}
+.rich-tb button{min-width:32px;height:30px;padding:0 8px;border:1px solid var(--border);border-radius:8px;background:var(--bg2);color:var(--ink);font-size:14px;cursor:pointer;font-family:inherit;line-height:1;touch-action:manipulation}
+.rich-tb button:active{transform:scale(.94)}
+.rich-tb input[type=color]{width:32px;height:30px;border:1px solid var(--border);border-radius:8px;background:var(--bg2);padding:2px;cursor:pointer}
+.rich-ed{width:100%;min-height:110px;max-height:40vh;overflow-y:auto;background:var(--bg2);border:none;border-radius:12px;color:var(--ink);font-size:16px;line-height:1.5;padding:12px 14px;outline:none;margin-bottom:12px;font-family:inherit}
+.rich-ed:empty:before{content:attr(data-ph);color:var(--ink3)}
 .node-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .node-act-btn{flex:1 1 auto;min-width:78px;padding:9px 6px;border:none;border-radius:10px;font-size:12px;font-weight:500;cursor:pointer;color:var(--ink);white-space:nowrap}
 .node-act-btn.go{background:var(--lila)}
@@ -514,7 +533,9 @@ body.fullscreen #fs-hint{display:block!important}
 .ent-count{font-size:11px;color:var(--ink3);padding:2px 4px 10px;letter-spacing:.04em}
 
 /* ═══ TARJETAS EMBEBIDAS EN LA PÁGINA (nodo / definición / conclusión) ═══ */
-.emb-card{position:absolute;width:210px;background:var(--card);border-radius:12px;box-shadow:2px 3px 16px rgba(120,100,140,.28);border:1px solid rgba(0,0,0,.06);z-index:11;pointer-events:all;overflow:hidden}
+.emb-card{position:absolute;width:210px;background:var(--card);border-radius:12px;box-shadow:2px 3px 16px rgba(120,100,140,.28);border:1px solid rgba(0,0,0,.06);z-index:11;pointer-events:all;overflow:hidden;display:flex;flex-direction:column}
+.emb-resize{position:absolute;right:0;bottom:0;width:20px;height:20px;cursor:nwse-resize;touch-action:none;z-index:5;background:linear-gradient(135deg,transparent 50%,rgba(120,100,140,.35) 50%);border-bottom-right-radius:12px}
+.emb-card.mini .emb-resize{display:none}
 .emb-hd{display:flex;align-items:center;gap:6px;padding:8px 9px;cursor:grab;touch-action:none;border-left:4px solid var(--lila)}
 .emb-hd:active{cursor:grabbing}
 .emb-arrow{font-size:13px;color:var(--ink3);transition:transform .18s;flex-shrink:0;line-height:1;cursor:pointer;padding:2px}
@@ -523,7 +544,7 @@ body.fullscreen #fs-hint{display:block!important}
 .emb-title{flex:1;font-size:13px;font-weight:700;color:var(--ink);line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .emb-del{font-size:16px;color:var(--ink3);cursor:pointer;padding:2px 4px;line-height:1;flex-shrink:0;touch-action:manipulation}
 .emb-body{display:none;padding:2px 11px 10px}
-.emb-body.open{display:block}
+.emb-body.open{display:block;flex:1;min-height:0;overflow-y:auto}
 .emb-text{font-size:12.5px;color:var(--ink2);line-height:1.5;white-space:pre-wrap;margin-bottom:8px}
 .emb-sub{border-left:2px solid var(--border);padding-left:9px;margin:4px 0 8px}
 .emb-sub-item{padding:4px 0}
@@ -1011,7 +1032,17 @@ body.fullscreen #gid-bar{bottom:20px}
   <div class="modal">
     <h3 id="modal-node-title">Nuevo nodo conceptual</h3>
     <input id="node-title-in" type="text" placeholder="Título (ej: Bandura – Aprendizaje vicario)">
-    <textarea id="node-body-in" placeholder="Descripción / resumen (todo lo que quieras)" rows="4"></textarea>
+    <div class="rich-tb" id="node-body-tb">
+      <button type="button" data-cmd="bold" title="Negrita"><b>B</b></button>
+      <button type="button" data-cmd="italic" title="Cursiva"><i>I</i></button>
+      <button type="button" data-cmd="underline" title="Subrayado"><u>U</u></button>
+      <button type="button" data-cmd="insertUnorderedList" title="Lista con guiones">•</button>
+      <button type="button" data-cmd="insertOrderedList" title="Lista numerada">1.</button>
+      <button type="button" data-cmd="fontSize" data-val="2" title="Más pequeño">A−</button>
+      <button type="button" data-cmd="fontSize" data-val="5" title="Más grande">A+</button>
+      <input type="color" data-cmd="foreColor" value="#c0392b" title="Color del texto">
+    </div>
+    <div id="node-body-in" class="rich-ed rich-content" contenteditable="true" data-ph="Descripción / resumen (con formato, todo lo que quieras)"></div>
     <div style="font-size:13px;color:var(--ink2);margin-bottom:12px">Se ancla a la página <span id="node-pg-label">1</span></div>
     <div class="modal-btns">
       <button class="mbtn cancel" id="modal-node-cancel">Cancelar</button>
@@ -1025,7 +1056,17 @@ body.fullscreen #gid-bar{bottom:20px}
   <div class="modal">
     <h3>Añadir subnivel</h3>
     <input id="subnode-title-in" type="text" placeholder="Subtítulo">
-    <textarea id="subnode-body-in" placeholder="Explicación (todo lo que quieras)" rows="4"></textarea>
+    <div class="rich-tb" id="subnode-body-tb">
+      <button type="button" data-cmd="bold" title="Negrita"><b>B</b></button>
+      <button type="button" data-cmd="italic" title="Cursiva"><i>I</i></button>
+      <button type="button" data-cmd="underline" title="Subrayado"><u>U</u></button>
+      <button type="button" data-cmd="insertUnorderedList" title="Lista con guiones">•</button>
+      <button type="button" data-cmd="insertOrderedList" title="Lista numerada">1.</button>
+      <button type="button" data-cmd="fontSize" data-val="2" title="Más pequeño">A−</button>
+      <button type="button" data-cmd="fontSize" data-val="5" title="Más grande">A+</button>
+      <input type="color" data-cmd="foreColor" value="#c0392b" title="Color del texto">
+    </div>
+    <div id="subnode-body-in" class="rich-ed rich-content" contenteditable="true" data-ph="Explicación (con formato, todo lo que quieras)"></div>
     <div class="modal-btns">
       <button class="mbtn cancel" id="modal-subnode-cancel">Cancelar</button>
       <button class="mbtn ok" id="modal-subnode-ok">Añadir</button>
@@ -1509,6 +1550,31 @@ const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2);
 const fmtBytes=b=>b<1024?b+'B':b<1048576?(b/1024|0)+'KB':(b/1048576).toFixed(1)+'MB';
 const fmtDate=ts=>new Date(ts).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'2-digit'});
 const esc=s=>{const d=document.createElement('div');d.textContent=s;return d.innerHTML};
+
+/* ══ TEXTO CON FORMATO ══
+   Los cuadros de texto guardan HTML (negrita, cursiva, color, listas…). Para no
+   romper lo escrito ANTES (texto plano), al mostrar detectamos si la cadena
+   trae etiquetas de formato conocidas: si no, la escapamos como texto plano
+   (así un "<" suelto tipo "5 < 10" no se rompe). */
+function isRich(s){return /<(\/?)(b|i|u|strong|em|span|ul|ol|li|br|div|p|font|a)\b[^>]*>/i.test(s||'')}
+function richHTML(s){s=s==null?'':String(s);return isRich(s)?s:esc(s).replace(/\n/g,'<br>')}
+/* área editable → HTML limpio (vacío si solo hay espacios/<br>) */
+function getRich(el){const plain=el.textContent.replace(/ /g,'').trim();const h=el.innerHTML.trim();
+  if(!plain && !/<(img|li|ul|ol)\b/i.test(h))return '';return h}
+function setRich(el,v){el.innerHTML=richHTML(v)}
+/* conecta una barra de formato (botones con data-cmd) a un área editable */
+function wireRichToolbar(tb,ed){
+  if(!tb||!ed)return;
+  tb.querySelectorAll('[data-cmd]').forEach(btn=>{
+    const cmd=btn.getAttribute('data-cmd'),val=btn.getAttribute('data-val');
+    if(btn.tagName==='INPUT'){
+      btn.addEventListener('input',()=>{ed.focus();document.execCommand(cmd,false,btn.value)});
+    }else{
+      btn.addEventListener('pointerdown',e=>e.preventDefault());   // no perder la selección al tocar el botón
+      btn.addEventListener('click',e=>{e.preventDefault();ed.focus();document.execCommand(cmd,false,val||null)});
+    }
+  });
+}
 
 /* ══ TOOL CONFIG ══ */
 let toolCfg={pen:{size:3,opacity:100},highlight:{opacity:38,size:20},eraser:{size:28}};
@@ -3782,32 +3848,35 @@ function loadNodes(){try{
 function saveNodes(arr){try{localStorage.setItem(nodeKey(),JSON.stringify(arr))}catch(e){}}
 
 let nodeAddRes=null,nodeSubRes=null;
+/* conecta las barras de formato de los dos modales (una sola vez) */
+wireRichToolbar(document.getElementById('node-body-tb'),document.getElementById('node-body-in'));
+wireRichToolbar(document.getElementById('subnode-body-tb'),document.getElementById('subnode-body-in'));
 document.getElementById('modal-node-cancel').onclick=()=>{document.getElementById('modal-node').classList.add('hidden');nodeAddRes&&nodeAddRes(null)};
 document.getElementById('modal-node-ok').onclick=()=>{
   const t=document.getElementById('node-title-in').value.trim();if(!t){showTip('Escribe un título');return}
-  document.getElementById('modal-node').classList.add('hidden');nodeAddRes&&nodeAddRes({title:t,body:document.getElementById('node-body-in').value.trim()});
+  document.getElementById('modal-node').classList.add('hidden');nodeAddRes&&nodeAddRes({title:t,body:getRich(document.getElementById('node-body-in'))});
 };
 document.getElementById('modal-subnode-cancel').onclick=()=>{document.getElementById('modal-subnode').classList.add('hidden');nodeSubRes&&nodeSubRes(null)};
 document.getElementById('modal-subnode-ok').onclick=()=>{
   const t=document.getElementById('subnode-title-in').value.trim();if(!t){showTip('Escribe un subtítulo');return}
-  document.getElementById('modal-subnode').classList.add('hidden');nodeSubRes&&nodeSubRes({title:t,body:document.getElementById('subnode-body-in').value.trim()});
+  document.getElementById('modal-subnode').classList.add('hidden');nodeSubRes&&nodeSubRes({title:t,body:getRich(document.getElementById('subnode-body-in'))});
 };
-function askNode(pg){return new Promise(r=>{nodeAddRes=r;document.getElementById('node-pg-label').textContent=pg;document.getElementById('node-title-in').value='';document.getElementById('node-body-in').value='';document.getElementById('modal-node').classList.remove('hidden');setTimeout(()=>document.getElementById('node-title-in').focus(),80)})}
-function askSubNode(){return new Promise(r=>{nodeSubRes=r;document.getElementById('subnode-title-in').value='';document.getElementById('subnode-body-in').value='';document.getElementById('modal-subnode').classList.remove('hidden');setTimeout(()=>document.getElementById('subnode-title-in').focus(),80)})}
+function askNode(pg){return new Promise(r=>{nodeAddRes=r;document.getElementById('node-pg-label').textContent=pg;document.getElementById('node-title-in').value='';setRich(document.getElementById('node-body-in'),'');document.getElementById('modal-node').classList.remove('hidden');setTimeout(()=>document.getElementById('node-title-in').focus(),80)})}
+function askSubNode(){return new Promise(r=>{nodeSubRes=r;document.getElementById('subnode-title-in').value='';setRich(document.getElementById('subnode-body-in'),'');document.getElementById('modal-subnode').classList.remove('hidden');setTimeout(()=>document.getElementById('subnode-title-in').focus(),80)})}
 /* mismos modales, pero precargados con el contenido actual → EDICIÓN */
 function askNodeEdit(title,body){return new Promise(r=>{
   nodeAddRes=r;
   document.getElementById('node-pg-label').textContent=curPage;
 
   document.getElementById('node-title-in').value=title||'';
-  document.getElementById('node-body-in').value=body||'';
+  setRich(document.getElementById('node-body-in'),body||'');
   document.getElementById('modal-node').classList.remove('hidden');
   setTimeout(()=>document.getElementById('node-title-in').focus(),80);
 })}
 function askSubNodeEdit(title,body){return new Promise(r=>{
   nodeSubRes=r;
   document.getElementById('subnode-title-in').value=title||'';
-  document.getElementById('subnode-body-in').value=body||'';
+  setRich(document.getElementById('subnode-body-in'),body||'');
   document.getElementById('modal-subnode').classList.remove('hidden');
   setTimeout(()=>document.getElementById('subnode-title-in').focus(),80);
 })}
@@ -3831,7 +3900,7 @@ function buildNodeEl(node,nodes){
   const pgEl=document.createElement('span');pgEl.className='node-pg';pgEl.textContent='p.'+(node.pages||[]).map(pageLabel).join(', ');
   hd.append(arrow,dot,titleEl,pgEl);
   const body=document.createElement('div');body.className='node-body';
-  if(node.body){const desc=document.createElement('div');desc.className='node-desc';desc.textContent=node.body;body.appendChild(desc)}
+  if(node.body){const desc=document.createElement('div');desc.className='node-desc rich-content';desc.innerHTML=richHTML(node.body);body.appendChild(desc)}
 
   /* chips de páginas: cada una navega; la × la desvincula del nodo */
   const chipsWrap=document.createElement('div');chipsWrap.style.cssText='margin-bottom:6px';
@@ -3850,9 +3919,10 @@ function buildNodeEl(node,nodes){
   });
   body.appendChild(chipsWrap);
 
-  // children
+  // children (árbol recursivo: cada subnivel muestra su explicación y puede editarse/profundizarse/borrarse)
+  if(!node.children)node.children=[];
   const subWrap=document.createElement('div');subWrap.className='node-sub';
-  (node.children||[]).forEach(ch=>subWrap.appendChild(buildSubNodeEl(ch,node,nodes)));
+  node.children.forEach(ch=>subWrap.appendChild(buildSubTree(ch,node.children,nodes)));
   body.appendChild(subWrap);
   // actions
   const acts=document.createElement('div');acts.className='node-actions';
@@ -3910,27 +3980,42 @@ function buildNodeEl(node,nodes){
   hd.onclick=()=>{const open=body.classList.toggle('open');arrow.classList.toggle('open',open)};
   return card;
 }
-function buildSubNodeEl(ch,parent,nodes){
+/* Un subnivel (y cualquier nivel más profundo) se pinta IGUAL, de forma
+   recursiva: título + explicación SIEMPRE visible + sus propios hijos + botones
+   Editar / Profundizar / Eliminar. Antes el nivel 3 era solo texto suelto sin
+   poder editarse, y la explicación del subnivel estaba oculta: incoherente.
+   `siblings` es la lista que contiene a `item` (para poder eliminarlo). */
+function buildSubTree(item,siblings,nodes){
+  if(!item.children)item.children=[];
   const el=document.createElement('div');el.className='node-sub-item';
-  const titleEl=document.createElement('div');titleEl.className='node-sub-title';titleEl.textContent=ch.title;
-  const bodyEl=document.createElement('div');bodyEl.className='node-sub-desc';if(ch.body)bodyEl.textContent=ch.body;
-  const sub2=document.createElement('div');sub2.className='node-sub-sub';
-  (ch.children||[]).forEach(gc=>{const gi=document.createElement('div');gi.className='node-sub-sub-item';gi.textContent='◦ '+gc.title+(gc.body?' — '+gc.body:'');sub2.appendChild(gi)});
-  const addSub2=document.createElement('button');addSub2.className='node-add-btn';addSub2.style.cssText='font-size:11px;margin-top:4px;padding:6px';addSub2.textContent='＋ Profundizar';
-  addSub2.onclick=async e=>{e.stopPropagation();const d=await askSubNode();if(!d)return;if(!ch.children)ch.children=[];ch.children.push({id:uid(),title:d.title,body:d.body});saveNodes(nodes);refreshNodesPanel()};
-  const editSub=document.createElement('button');editSub.className='node-add-btn';
-  editSub.style.cssText='font-size:11px;margin-top:4px;padding:6px';editSub.textContent='✎ Editar';
-  editSub.onclick=async e=>{
-    e.stopPropagation();
-    const d=await askSubNodeEdit(ch.title,ch.body||'');
-    if(!d)return;
-    ch.title=d.title;ch.body=d.body;
-    saveNodes(nodes);refreshNodesPanel();renderNodeAnchors();
-  };
-  const delBtn=document.createElement('button');delBtn.className='glos-del';delBtn.textContent='×';
-  delBtn.onclick=e=>{e.stopPropagation();const i=(parent.children||[]).indexOf(ch);if(i>-1)parent.children.splice(i,1);saveNodes(nodes);refreshNodesPanel();renderNodeAnchors()};
-  el.append(delBtn,titleEl,bodyEl,sub2,editSub,addSub2);
-  el.addEventListener('click',()=>bodyEl.classList.toggle('open'));
+
+  const titleEl=document.createElement('div');titleEl.className='node-sub-title';titleEl.textContent=item.title;
+  el.appendChild(titleEl);
+  if(item.body&&String(item.body).trim()){
+    const bodyEl=document.createElement('div');bodyEl.className='node-sub-desc rich-content';bodyEl.innerHTML=richHTML(item.body);el.appendChild(bodyEl);
+  }
+  const acts=document.createElement('div');acts.className='node-sub-acts';
+  const editSub=document.createElement('button');editSub.textContent='✎ Editar';
+  editSub.onclick=async e=>{e.stopPropagation();
+    const d=await askSubNodeEdit(item.title,item.body||'');if(!d)return;
+    item.title=d.title;item.body=d.body;saveNodes(nodes);refreshNodesPanel();renderNodeAnchors()};
+  const deep=document.createElement('button');deep.className='deep';deep.textContent='＋ Profundizar';
+  deep.onclick=async e=>{e.stopPropagation();
+    const d=await askSubNode();if(!d)return;
+    item.children.push({id:uid(),title:d.title,body:d.body,children:[]});saveNodes(nodes);refreshNodesPanel();renderNodeAnchors()};
+  const delBtn=document.createElement('button');delBtn.className='del';delBtn.textContent='× Eliminar';
+  delBtn.onclick=async e=>{e.stopPropagation();
+    const ok=await askConfirm(`¿Eliminar "${item.title}" y todo lo que cuelga de él?`);if(!ok)return;
+    const i=siblings.indexOf(item);if(i>-1)siblings.splice(i,1);saveNodes(nodes);refreshNodesPanel();renderNodeAnchors()};
+  acts.append(editSub,deep,delBtn);
+  el.appendChild(acts);
+
+  /* los subniveles más profundos van indentados DEBAJO de los botones */
+  if(item.children.length){
+    const sub=document.createElement('div');sub.className='node-sub-sub';
+    item.children.forEach(gc=>sub.appendChild(buildSubTree(gc,item.children,nodes)));
+    el.appendChild(sub);
+  }
   return el;
 }
 /* abrir el panel lateral directamente en la pestaña de Nodos */
@@ -3994,6 +4079,9 @@ function renderEmbeds(){
 function buildEmbedCard(emb,data,nl){
   const card=document.createElement('div');card.className='emb-card'+(emb.mini?' mini':'');
   card.style.left=(emb.x*scale)+'px';card.style.top=(emb.y*scale)+'px';
+  /* tamaño libre guardado (en unidades base, como las notas) */
+  if(emb.w)card.style.width=(emb.w*scale)+'px';
+  if(emb.h&&!emb.mini)card.style.height=(emb.h*scale)+'px';
 
   const hd=document.createElement('div');hd.className='emb-hd';hd.style.borderLeftColor=data.color;
   const arrow=document.createElement('span');arrow.className='emb-arrow'+(emb.mini?'':' open');arrow.textContent='▸';
@@ -4003,12 +4091,12 @@ function buildEmbedCard(emb,data,nl){
   hd.append(arrow,ic,title,del);
 
   const body=document.createElement('div');body.className='emb-body'+(emb.mini?'':' open');
-  if(data.text){const t=document.createElement('div');t.className='emb-text';t.textContent=data.text;body.appendChild(t)}
+  if(data.text){const t=document.createElement('div');t.className='emb-text rich-content';t.innerHTML=richHTML(data.text);body.appendChild(t)}
   if(data.children&&data.children.length){
     const sub=document.createElement('div');sub.className='emb-sub';
     data.children.forEach(ch=>{
       const si=document.createElement('div');si.className='emb-sub-item';
-      si.innerHTML=`<div class="emb-sub-t">${esc(ch.title||'')}</div>${ch.body?`<div class="emb-sub-d">${esc(ch.body)}</div>`:''}`;
+      si.innerHTML=`<div class="emb-sub-t">${esc(ch.title||'')}</div>${ch.body?`<div class="emb-sub-d rich-content">${richHTML(ch.body)}</div>`:''}`;
       sub.appendChild(si);
     });
     body.appendChild(sub);
@@ -4029,6 +4117,8 @@ function buildEmbedCard(emb,data,nl){
     card.classList.toggle('mini',emb.mini);
     body.classList.toggle('open',!emb.mini);
     arrow.classList.toggle('open',!emb.mini);
+    /* al plegar quita el alto fijo (si no, la tarjeta grande no se recoge) */
+    if(emb.mini){card.style.height=''}else if(emb.h){card.style.height=(emb.h*scale)+'px'}
     const arr=loadEmbeds();const x=arr.find(z=>z.id===emb.id);if(x)x.mini=emb.mini;saveEmbeds(arr);
   };
   arrow.addEventListener('pointerdown',e=>e.stopPropagation());
@@ -4059,6 +4149,18 @@ function buildEmbedCard(emb,data,nl){
   },{passive:false});
   hd.addEventListener('pointerup',()=>{if(dragging){dragging=false;const arr=loadEmbeds();const x=arr.find(z=>z.id===emb.id);if(x){x.x=emb.x;x.y=emb.y}saveEmbeds(arr)}});
   hd.addEventListener('pointercancel',()=>{dragging=false});
+
+  /* asa de redimensión libre (esquina inferior derecha); persiste al soltar */
+  const rz=document.createElement('div');rz.className='emb-resize';rz.title='Ampliar';
+  let rzing=false,rx,ry,rw,rh;
+  rz.addEventListener('pointerdown',e=>{e.stopPropagation();e.preventDefault();rzing=true;rz.setPointerCapture(e.pointerId);
+    rx=e.clientX;ry=e.clientY;const r=card.getBoundingClientRect();rw=r.width;rh=r.height},{passive:false});
+  rz.addEventListener('pointermove',e=>{if(!rzing)return;e.preventDefault();e.stopPropagation();
+    const nw=Math.max(150,rw+(e.clientX-rx)),nh=Math.max(70,rh+(e.clientY-ry));
+    card.style.width=nw+'px';card.style.height=nh+'px';emb.w=nw/scale;emb.h=nh/scale},{passive:false});
+  rz.addEventListener('pointerup',e=>{if(!rzing)return;rzing=false;e.stopPropagation();
+    const arr=loadEmbeds();const x=arr.find(z=>z.id===emb.id);if(x){x.w=emb.w;x.h=emb.h}saveEmbeds(arr)});
+  card.appendChild(rz);
 
   return card;
 }
