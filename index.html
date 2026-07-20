@@ -453,6 +453,7 @@ body.fullscreen #rd-bottom-show{display:none}
 .proc-diagram{position:relative}
 .proc-box{position:absolute;background:var(--card);border:1.5px solid var(--border);border-radius:10px;padding:7px 9px;box-shadow:0 1px 4px rgba(120,100,140,.1);display:flex;align-items:center;box-sizing:border-box}
 .proc-box-title{font-size:12px;font-weight:600;color:var(--ink);line-height:1.25;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical}
+.proc-embed-diagram{width:100%;height:100%;overflow:auto;-webkit-overflow-scrolling:touch}
 /* modo ventana: SOLO el panel del mapa conceptual puede salir del borde y
    ponerse centrado/movible (decisión explícita: el resto de paneles se
    quedan siempre acoplados). El selector por id (#cmap-panel.floating) tiene
@@ -4289,7 +4290,9 @@ function addEmbed(kind,refId,page){
      no se apilen unos encima de otros al plasmar varios */
   const onPage=arr.filter(e=>e.page===page).length;
   const x=40+(onPage%3)*30, y=60+onPage*44;
-  arr.push({id:uid(),kind,refId,page,x,y,mini:false});
+  const rec={id:uid(),kind,refId,page,x,y,mini:false};
+  if(kind==='proc'){rec.w=340;rec.h=260}   // el diagrama necesita más sitio que una ficha de texto
+  arr.push(rec);
   saveEmbeds(arr);scheduleAnchors();
   showTip('Plasmado en la página '+page+'',1500);
 }
@@ -4307,6 +4310,14 @@ function resolveEmbed(emb){
     if(!found)return null;
     return{ic:'🗺️',color:cmapLevelDot(found.node.level),title:found.node.title,
       cmapNode:found.node,cmapMaps:found.maps,goPage:found.node.page};
+  }
+  if(emb.kind==='proc'){
+    const procs=loadProc();
+    const proc=procs.find(p=>p.id===emb.refId);
+    if(!proc)return null;
+    const th=proc.themeId?themeById(proc.themeId):null;
+    return{ic:'🔁',color:th?th.color:'#E3D0F5',title:proc.title,
+      procSteps:proc.steps,procsAll:procs};
   }
   const ent=loadEnts(emb.kind).find(x=>x.gid===emb.refId||x.id===emb.refId);
   if(!ent)return null;
@@ -4366,6 +4377,16 @@ function buildEmbedCard(emb,data,nl){
        panel). Los enlaces .cmap-link funcionan igual: el clic se resuelve
        con el mismo delegado a nivel de documento de la pieza anterior. */
     body.appendChild(buildCmapReadonlyNode(data.cmapNode,data.cmapMaps));
+  }else if(emb.kind==='proc'){
+    /* diagrama arrastrable: cada caja se mueve individualmente (con
+       stopPropagation, para no mover a la vez toda la tarjeta) y su
+       posición se guarda en el propio paso, compartida con el panel. */
+    const diagWrap=document.createElement('div');diagWrap.className='proc-embed-diagram';
+    diagWrap.appendChild(renderProcDiagram(data.procSteps,{
+      draggable:true,
+      onMoved:()=>saveProc(data.procsAll)
+    }));
+    body.appendChild(diagWrap);
   }else{
     if(data.text){const t=document.createElement('div');t.className='emb-text rich-content';t.innerHTML=richHTML(data.text);body.appendChild(t)}
     if(data.children&&data.children.length){
@@ -5092,7 +5113,13 @@ function buildProcCard(proc,procs){
     const i=procs.indexOf(proc);if(i>-1)procs.splice(i,1);
     saveProc(procs);refreshProcPanel();
   };
-  acts.append(editBtn,delBtn);
+  const embBtn=document.createElement('button');embBtn.className='cmap-act-btn sub';embBtn.textContent='📌 Plasmar';
+  embBtn.onclick=e=>{
+    e.stopPropagation();
+    addEmbed('proc',proc.id,curPid());
+    document.getElementById('proc-panel').classList.remove('open');
+  };
+  acts.append(editBtn,embBtn,delBtn);
   body.appendChild(acts);
   card.append(hd,body);
 
@@ -5302,29 +5329,38 @@ function renderProcDiagram(steps,opts){
   const markerId='procArrow'+Math.random().toString(36).slice(2);
   svg.innerHTML=`<defs><marker id="${markerId}" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--ink3)"/></marker></defs>`;
 
-  steps.forEach(s=>{
-    (s.from||[]).forEach(fid=>{
-      const src=byId[fid];if(!src)return;                 // referencia colgante: se ignora al dibujar
-      const isBack=backEdges.has(fid+'>'+s.id);
-      const c1=coords[fid],c2=coords[s.id];
-      let d;
-      if(isBack){
-        const rightX=Math.max(c1.x+boxW,c2.x+boxW)+50;
-        const y1=c1.y+boxH/2,y2=c2.y+boxH/2;
-        d=`M${c1.x+boxW},${y1} C${rightX},${y1} ${rightX},${y2} ${c2.x+boxW},${y2}`;
-      }else{
-        const x1=c1.x+boxW/2,y1=c1.y+boxH,x2=c2.x+boxW/2,y2=c2.y,midY=(y1+y2)/2;
-        d=`M${x1},${y1} C${x1},${midY} ${x2},${midY} ${x2},${y2}`;
-      }
-      const path=document.createElementNS(svgNS,'path');
-      path.setAttribute('d',d);path.setAttribute('fill','none');
-      path.setAttribute('stroke','var(--ink3)');path.setAttribute('stroke-width','2');
-      if(isBack)path.setAttribute('stroke-dasharray','5,4');
-      path.setAttribute('marker-end',`url(#${markerId})`);
-      svg.appendChild(path);
+  /* separado en una función para poder volver a llamarla al arrastrar una
+     caja, sin recalcular la colocación de las demás */
+  function pathD(fid,sid){
+    const isBack=backEdges.has(fid+'>'+sid);
+    const c1=coords[fid],c2=coords[sid];
+    if(isBack){
+      const rightX=Math.max(c1.x+boxW,c2.x+boxW)+50;
+      const y1=c1.y+boxH/2,y2=c2.y+boxH/2;
+      return`M${c1.x+boxW},${y1} C${rightX},${y1} ${rightX},${y2} ${c2.x+boxW},${y2}`;
+    }
+    const x1=c1.x+boxW/2,y1=c1.y+boxH,x2=c2.x+boxW/2,y2=c2.y,midY=(y1+y2)/2;
+    return`M${x1},${y1} C${x1},${midY} ${x2},${midY} ${x2},${y2}`;
+  }
+  function redrawLines(){
+    svg.querySelectorAll('path.proc-edge').forEach(p=>p.remove());
+    steps.forEach(s=>{
+      (s.from||[]).forEach(fid=>{
+        if(!byId[fid])return;                              // referencia colgante: se ignora al dibujar
+        const isBack=backEdges.has(fid+'>'+s.id);
+        const path=document.createElementNS(svgNS,'path');
+        path.setAttribute('class','proc-edge');
+        path.setAttribute('d',pathD(fid,s.id));
+        path.setAttribute('fill','none');
+        path.setAttribute('stroke','var(--ink3)');path.setAttribute('stroke-width','2');
+        if(isBack)path.setAttribute('stroke-dasharray','5,4');
+        path.setAttribute('marker-end',`url(#${markerId})`);
+        svg.appendChild(path);
+      });
     });
-  });
+  }
   wrap.appendChild(svg);
+  redrawLines();
 
   steps.forEach(s=>{
     const c=coords[s.id];
@@ -5335,6 +5371,35 @@ function renderProcDiagram(steps,opts){
     if(opts.onStepClick){
       box.style.cursor='pointer';
       box.addEventListener('click',e=>{e.stopPropagation();opts.onStepClick(s)});
+    }
+    if(opts.draggable){
+      /* arrastre individual de la caja. stopPropagation en las tres fases
+         para no mover a la vez la tarjeta contenedora (mismo cuidado que ya
+         lleva cmap-ro-hd dentro de emb-card). setPointerCapture: si el dedo
+         se sale un poco de la caja al arrastrar rápido, el gesto se sigue
+         recibiendo igual. */
+      box.style.cursor='grab';box.style.touchAction='none';
+      let drag=null;
+      box.addEventListener('pointerdown',e=>{
+        e.stopPropagation();
+        drag={sx:e.clientX,sy:e.clientY,startX:coords[s.id].x,startY:coords[s.id].y};
+        box.setPointerCapture(e.pointerId);
+        e.preventDefault();
+      });
+      box.addEventListener('pointermove',e=>{
+        if(!drag)return;
+        e.stopPropagation();
+        coords[s.id]={x:drag.startX+(e.clientX-drag.sx),y:drag.startY+(e.clientY-drag.sy)};
+        box.style.left=coords[s.id].x+'px';box.style.top=coords[s.id].y+'px';
+        redrawLines();
+      });
+      box.addEventListener('pointerup',e=>{
+        if(!drag)return;
+        e.stopPropagation();
+        drag=null;
+        s.x=coords[s.id].x;s.y=coords[s.id].y;
+        opts.onMoved&&opts.onMoved(s);
+      });
     }
     wrap.appendChild(box);
   });
