@@ -1462,7 +1462,7 @@ body.fullscreen #gid-bar{bottom:20px}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 'use strict';
-const APP_VER='v79'; // ← súbelo en cada despliegue para comprobar que el iPad se ha actualizado
+const APP_VER='v80'; // ← súbelo en cada despliegue para comprobar que el iPad se ha actualizado
 console.log('LecturaPDF',APP_VER);
 
 /* ══ MARCADOR DE VERSIÓN ══
@@ -3263,7 +3263,14 @@ function redrawPage(aCv,nl,num){
     const ann=annotations[num];
     const notes=ann?.notes||[];
     const aclars=loadAclars().filter(a=>a.page===num);
-    const sig=notes.map(n=>n.id+':'+(n.mini?1:0)+':'+Math.round(n.x)+','+Math.round(n.y)).join('|')
+    /* El ZOOM entra en la firma. Las coordenadas guardadas están en unidades
+       base y no cambian al ampliar, pero al pintar se multiplican por
+       `scale`: sin el zoom aquí, la firma salía idéntica tras hacer zoom, la
+       capa NO se reconstruía, y las lupas de las aclaraciones (y las notas)
+       se quedaban clavadas en los píxeles del zoom anterior, separándose de
+       su palabra. */
+    const sig=scale.toFixed(3)+'|'
+      +notes.map(n=>n.id+':'+(n.mini?1:0)+':'+Math.round(n.x)+','+Math.round(n.y)).join('|')
       +'#'+aclars.map(a=>a.id+':'+(a.mini?1:0)+':'+Math.round(a.ax)+','+Math.round(a.ay)+':'+(a.bx!=null?Math.round(a.bx):'')+','+(a.by!=null?Math.round(a.by):'')).join('|');
     if(nl.dataset.sig!==sig){
       nl.dataset.sig=sig;
