@@ -5178,6 +5178,73 @@ document.getElementById('tb-proc').onclick=()=>{openPanel('proc-panel');refreshP
 document.querySelector('#proc-panel .sp-close').onclick=()=>document.getElementById('proc-panel').classList.remove('open');
 addPanelSwipe('proc-panel');
 
+/* ══ AUTO-COLOCACIÓN POR CAPAS (función pura, como cmapInsert) ══
+   Coloca cada paso en una capa según quién lo alimenta: capa = camino más
+   largo desde un "paso de partida" (sin entradas), como un esquema de
+   diagrama de flujo clásico. Los ciclos (un paso que recibe flecha de uno
+   POSTERIOR) se detectan por DFS clásico y se excluyen del cálculo de capas
+   para no crear un bucle infinito, pero se devuelven en `backEdges` para
+   que la pieza de dibujo los pinte igualmente (curvos/discontinuos).
+   Devuelve {pos, backEdges, layer}:
+     pos[id]    = {layer, col, cols} → fila y posición dentro de la fila
+     backEdges  = Set de "origenId>destinoId" que son ciclos
+     layer[id]  = número de capa (por si hace falta aparte de `pos`) */
+function procAutoLayout(steps){
+  const byId={};steps.forEach(s=>byId[s.id]=s);
+
+  /* 1. grafo hacia adelante: out[s.id] = pasos que reciben flecha DE s */
+  const out={};steps.forEach(s=>out[s.id]=[]);
+  steps.forEach(s=>(s.from||[]).forEach(f=>{if(out[f])out[f].push(s.id)}));
+
+  /* 2. DFS blanco/gris/negro: una arista hacia un nodo GRIS (en la pila
+     actual) es "de retroceso" → ciclo */
+  const color={};steps.forEach(s=>color[s.id]='white');
+  const backEdges=new Set();
+  function dfs(id){
+    color[id]='gray';
+    (out[id]||[]).forEach(nx=>{
+      if(color[nx]==='gray')backEdges.add(id+'>'+nx);
+      else if(color[nx]==='white')dfs(nx);
+    });
+    color[id]='black';
+  }
+  steps.forEach(s=>{if(color[s.id]==='white')dfs(s.id)});
+
+  /* 3. predecesores efectivos = from sin las aristas de retroceso */
+  const effPred={};
+  steps.forEach(s=>{
+    effPred[s.id]=(s.from||[]).filter(f=>byId[f]&&!backEdges.has(f+'>'+s.id));
+  });
+
+  /* 4. capas por camino más largo, procesando en orden topológico (Kahn) */
+  const outDag={};steps.forEach(s=>outDag[s.id]=[]);
+  steps.forEach(s=>effPred[s.id].forEach(f=>outDag[f].push(s.id)));
+  const inDeg={};steps.forEach(s=>inDeg[s.id]=effPred[s.id].length);
+  const layer={};
+  const queue=steps.filter(s=>inDeg[s.id]===0).map(s=>s.id);
+  queue.forEach(id=>layer[id]=0);
+  let qi=0;
+  while(qi<queue.length){
+    const id=queue[qi++];
+    (outDag[id]||[]).forEach(nx=>{
+      layer[nx]=Math.max(layer[nx]===undefined?0:layer[nx],layer[id]+1);
+      if(--inDeg[nx]===0)queue.push(nx);
+    });
+  }
+  steps.forEach(s=>{if(layer[s.id]===undefined)layer[s.id]=0});   // por si acaso, nunca debería hacer falta en un DAG
+
+  /* 5. posición dentro de cada capa: orden de creación, ya viene dado por
+     el orden del array `steps` */
+  const byLayer={};
+  steps.forEach(s=>{(byLayer[layer[s.id]]=byLayer[layer[s.id]]||[]).push(s.id)});
+  const pos={};
+  Object.keys(byLayer).forEach(L=>{
+    const ids=byLayer[L];
+    ids.forEach((id,i)=>{pos[id]={layer:+L,col:i,cols:ids.length}});
+  });
+  return{pos,backEdges,layer};
+}
+
 /* ══ GLOSARIO · CONCLUSIONES ══ */
 function isDefColor(c){const defs=['#F9D5E5','#FF2D75','#DDA0A8','#F5C7D8'];return defs.some(d=>d.toLowerCase()===(c||'').toLowerCase())}
 /* colores marcados como "Conclusiones" en las tres paletas */
