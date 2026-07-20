@@ -444,6 +444,11 @@ body.fullscreen #rd-bottom-show{display:none}
 .cmap-ro-body{display:none;padding-left:16px;border-left:1.5px solid var(--border);margin-left:3px}
 .cmap-ro-body.open{display:block}
 .cmap-ro-body .cmap-desc{margin:2px 0 4px}
+/* ═══ PROCESOS Y TEORÍAS: lista compacta de pasos ═══ */
+.proc-steps{margin-bottom:4px}
+.proc-step-row{background:var(--bg2);border-radius:10px;padding:9px 10px;margin-bottom:6px}
+.proc-step-title{font-size:13.5px;font-weight:700;color:var(--ink)}
+.proc-step-from{font-size:11.5px;color:var(--ink3);margin:2px 0 4px}
 /* modo ventana: SOLO el panel del mapa conceptual puede salir del borde y
    ponerse centrado/movible (decisión explícita: el resto de paneles se
    quedan siempre acoplados). El selector por id (#cmap-panel.floating) tiene
@@ -1222,6 +1227,35 @@ body.fullscreen #gid-bar{bottom:20px}
     <div class="modal-btns">
       <button class="mbtn cancel" id="modal-proc-cancel">Cancelar</button>
       <button class="mbtn ok" id="modal-proc-ok">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- modal de paso de un proceso: título + descripción + de qué pasos recibe flecha -->
+<div class="modal-bg hidden" id="modal-proc-step">
+  <div class="modal">
+    <h3>Paso</h3>
+    <input id="proc-step-title-in" type="text" placeholder="Título del paso" maxlength="150">
+    <div class="rich-tb" id="proc-step-body-tb">
+      <button type="button" data-cmd="bold" title="Negrita"><b>B</b></button>
+      <button type="button" data-cmd="italic" title="Cursiva"><i>I</i></button>
+      <button type="button" data-cmd="underline" title="Subrayado"><u>U</u></button>
+      <button type="button" data-cmd="insertUnorderedList" title="Lista con guiones">•</button>
+      <button type="button" data-cmd="insertOrderedList" title="Lista numerada">1.</button>
+      <button type="button" data-cmd="fontSize" data-val="2" title="Más pequeño">A−</button>
+      <button type="button" data-cmd="fontSize" data-val="5" title="Más grande">A+</button>
+      <input type="color" data-cmd="foreColor" value="#c0392b" title="Color del texto">
+      <input type="color" data-cmd="hiliteColor" value="#ffe066" title="Resaltar el fondo">
+      <button type="button" data-cmd="removeFormat" title="Quitar el formato">✕fmt</button>
+    </div>
+    <div id="proc-step-body-in" class="rich-ed rich-content" contenteditable="true" data-ph="Descripción del paso (opcional, con formato)"></div>
+    <div style="margin:0 0 12px">
+      <label style="display:block;font-size:12.5px;color:var(--ink2);margin-bottom:5px">Recibe flecha de (elige 0, 1 o varios; marcar uno posterior crea un ciclo)</label>
+      <div id="proc-step-from-list" style="max-height:160px;overflow-y:auto;display:flex;flex-direction:column;gap:4px"></div>
+    </div>
+    <div class="modal-btns">
+      <button class="mbtn cancel" id="modal-proc-step-cancel">Cancelar</button>
+      <button class="mbtn ok" id="modal-proc-step-ok">Guardar</button>
     </div>
   </div>
 </div>
@@ -5012,11 +5046,26 @@ function buildProcCard(proc,procs){
   }
 
   const body=document.createElement('div');body.className='cmap-body-wrap'+(proc.open?' open':'');
+
+  const stepsWrap=document.createElement('div');stepsWrap.className='proc-steps';
   if(!proc.steps.length){
     const em=document.createElement('div');em.className='cmap-desc';em.style.color='var(--ink3)';
     em.textContent='Sin pasos todavía.';
-    body.appendChild(em);
+    stepsWrap.appendChild(em);
+  }else{
+    proc.steps.forEach(step=>stepsWrap.appendChild(buildProcStepRow(step,proc,procs)));
   }
+  body.appendChild(stepsWrap);
+
+  const addStepBtn=document.createElement('button');addStepBtn.className='node-add-btn';addStepBtn.style.marginBottom='8px';
+  addStepBtn.textContent='＋ Paso';
+  addStepBtn.onclick=async e=>{
+    e.stopPropagation();
+    const d=await askProcStep(proc,null);if(!d)return;
+    proc.steps.push({id:uid(),title:d.title,desc:d.desc,from:d.from,x:null,y:null,created:Date.now()});
+    saveProc(procs);refreshProcPanel();showTip('Paso añadido',1200);
+  };
+  body.appendChild(addStepBtn);
 
   const acts=document.createElement('div');acts.className='cmap-acts';
   const editBtn=document.createElement('button');editBtn.className='cmap-act-btn';editBtn.textContent='✎ Editar';
@@ -5045,6 +5094,85 @@ function buildProcCard(proc,procs){
   };
   return card;
 }
+
+/* fila compacta de un paso, con editar/eliminar SIEMPRE fiables aunque el
+   diagrama visual (piezas siguientes) sea pequeño para tocar con precisión */
+function buildProcStepRow(step,proc,procs){
+  const row=document.createElement('div');row.className='proc-step-row';
+  const title=document.createElement('div');title.className='proc-step-title';title.textContent=step.title;
+  row.appendChild(title);
+
+  const fromLabel=document.createElement('div');fromLabel.className='proc-step-from';
+  if(step.from&&step.from.length){
+    const names=step.from.map(id=>{const s=proc.steps.find(x=>x.id===id);return s?s.title:'(paso borrado)'});
+    fromLabel.textContent='← '+names.join(', ');
+  }else{
+    fromLabel.textContent='Punto de partida';
+  }
+  row.appendChild(fromLabel);
+
+  if(step.desc&&String(step.desc).trim()){
+    const d=document.createElement('div');d.className='cmap-desc rich-content';d.innerHTML=richHTML(step.desc);
+    row.appendChild(d);
+  }
+
+  const acts=document.createElement('div');acts.className='cmap-acts';
+  const editBtn=document.createElement('button');editBtn.className='cmap-act-btn';editBtn.textContent='✎ Editar';
+  editBtn.onclick=async e=>{
+    e.stopPropagation();
+    const d=await askProcStep(proc,step);if(!d)return;
+    step.title=d.title;step.desc=d.desc;step.from=d.from;
+    saveProc(procs);refreshProcPanel();
+  };
+  const delBtn=document.createElement('button');delBtn.className='cmap-act-btn del';delBtn.textContent='Eliminar';
+  delBtn.onclick=async e=>{
+    e.stopPropagation();
+    const ok=await askConfirm(`¿Eliminar el paso "${step.title}"?`);if(!ok)return;
+    const i=proc.steps.indexOf(step);if(i>-1)proc.steps.splice(i,1);
+    /* limpia referencias colgantes: ningún otro paso debe seguir apuntando a
+       un paso que ya no existe */
+    proc.steps.forEach(s=>{if(s.from)s.from=s.from.filter(id=>id!==step.id)});
+    saveProc(procs);refreshProcPanel();
+  };
+  acts.append(editBtn,delBtn);
+  row.appendChild(acts);
+  return row;
+}
+
+/* editor de paso: título + descripción con formato + lista de casillas con
+   TODOS los demás pasos del proceso, para marcar de cuáles recibe flecha.
+   Se reconstruye cada vez que se abre (proc.steps puede haber cambiado). */
+let procStepRes=null;
+wireRichToolbar(document.getElementById('proc-step-body-tb'),document.getElementById('proc-step-body-in'));
+document.getElementById('modal-proc-step-cancel').onclick=()=>{document.getElementById('modal-proc-step').classList.add('hidden');procStepRes&&procStepRes(null)};
+document.getElementById('modal-proc-step-ok').onclick=()=>{
+  const t=document.getElementById('proc-step-title-in').value.trim();if(!t){showTip('Escribe un título');return}
+  const from=[...document.querySelectorAll('#proc-step-from-list input:checked')].map(c=>c.value);
+  document.getElementById('modal-proc-step').classList.add('hidden');
+  procStepRes&&procStepRes({title:t,desc:getRich(document.getElementById('proc-step-body-in')),from});
+};
+function askProcStep(proc,step){return new Promise(r=>{
+  procStepRes=r;
+  document.getElementById('proc-step-title-in').value=step?step.title:'';
+  setRich(document.getElementById('proc-step-body-in'),step?step.desc:'');
+  const list=document.getElementById('proc-step-from-list');list.innerHTML='';
+  const others=proc.steps.filter(s=>!step||s.id!==step.id);
+  if(!others.length){
+    const em=document.createElement('div');em.style.cssText='font-size:12.5px;color:var(--ink3);padding:4px 2px';
+    em.textContent='Este es el primer paso: aún no hay otros para conectar.';
+    list.appendChild(em);
+  }
+  others.forEach(s=>{
+    const lab=document.createElement('label');
+    lab.style.cssText='display:flex;align-items:center;gap:8px;padding:8px;border-radius:8px;background:var(--bg2);font-size:13.5px;color:var(--ink)';
+    const cb=document.createElement('input');cb.type='checkbox';cb.value=s.id;
+    cb.checked=!!(step&&step.from&&step.from.includes(s.id));
+    lab.append(cb,document.createTextNode(s.title));
+    list.appendChild(lab);
+  });
+  document.getElementById('modal-proc-step').classList.remove('hidden');
+  setTimeout(()=>document.getElementById('proc-step-title-in').focus(),80);
+})}
 
 document.getElementById('tb-proc').onclick=()=>{openPanel('proc-panel');refreshProcPanel()};
 document.querySelector('#proc-panel .sp-close').onclick=()=>document.getElementById('proc-panel').classList.remove('open');
@@ -6555,6 +6683,7 @@ const MODAL_OK={
   'modal-cmap':'modal-cmap-ok',          // Guardar
   'modal-cmap-preview':'cmap-preview-open', // Ver ficha completa
   'modal-proc':'modal-proc-ok',          // Guardar
+  'modal-proc-step':'modal-proc-step-ok', // Guardar
   'modal-bookmark':'modal-bookmark-ok',  // Guardar
   'modal-name':'modal-name-ok',          // Guardar
   'modal-confirm':'modal-confirm-ok',    // Eliminar (es la accion que se pidio)
@@ -6575,6 +6704,7 @@ const MODAL_CANCEL={
   'modal-cmap-link':'modal-cmap-link-cancel',
   'modal-cmap-preview':'cmap-preview-close',
   'modal-proc':'modal-proc-cancel',
+  'modal-proc-step':'modal-proc-step-cancel',
   'modal-bookmark':'modal-bookmark-cancel',
   'modal-name':'modal-name-cancel',
   'modal-confirm':'modal-confirm-cancel',
