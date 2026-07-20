@@ -449,6 +449,10 @@ body.fullscreen #rd-bottom-show{display:none}
 .proc-step-row{background:var(--bg2);border-radius:10px;padding:9px 10px;margin-bottom:6px}
 .proc-step-title{font-size:13.5px;font-weight:700;color:var(--ink)}
 .proc-step-from{font-size:11.5px;color:var(--ink3);margin:2px 0 4px}
+.proc-diagram-scroll{overflow-x:auto;overflow-y:hidden;margin-bottom:10px;padding-bottom:4px;-webkit-overflow-scrolling:touch}
+.proc-diagram{position:relative}
+.proc-box{position:absolute;background:var(--card);border:1.5px solid var(--border);border-radius:10px;padding:7px 9px;box-shadow:0 1px 4px rgba(120,100,140,.1);display:flex;align-items:center;box-sizing:border-box}
+.proc-box-title{font-size:12px;font-weight:600;color:var(--ink);line-height:1.25;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical}
 /* modo ventana: SOLO el panel del mapa conceptual puede salir del borde y
    ponerse centrado/movible (decisión explícita: el resto de paneles se
    quedan siempre acoplados). El selector por id (#cmap-panel.floating) tiene
@@ -5047,6 +5051,12 @@ function buildProcCard(proc,procs){
 
   const body=document.createElement('div');body.className='cmap-body-wrap'+(proc.open?' open':'');
 
+  if(proc.steps.length){
+    const diagWrap=document.createElement('div');diagWrap.className='proc-diagram-scroll';
+    diagWrap.appendChild(renderProcDiagram(proc.steps,{}));
+    body.appendChild(diagWrap);
+  }
+
   const stepsWrap=document.createElement('div');stepsWrap.className='proc-steps';
   if(!proc.steps.length){
     const em=document.createElement('div');em.className='cmap-desc';em.style.color='var(--ink3)';
@@ -5243,6 +5253,93 @@ function procAutoLayout(steps){
     ids.forEach((id,i)=>{pos[id]={layer:+L,col:i,cols:ids.length}});
   });
   return{pos,backEdges,layer};
+}
+
+/* ══ DIBUJO DEL DIAGRAMA (compartida: panel de solo lectura y, en la
+   siguiente pieza, la tarjeta plasmada arrastrable) ══
+   Cajas HTML posicionadas de forma absoluta + un <svg> con una línea por
+   arista. Las de ciclo salen curvas hacia la derecha y discontinuas, para
+   que se lean claramente como "vuelve atrás" y no como el camino normal.
+   Si un paso ya tiene x/y guardados (se movió a mano) se respeta esa
+   posición; si no, se usa la calculada por procAutoLayout. */
+function renderProcDiagram(steps,opts){
+  opts=opts||{};
+  const boxW=opts.boxW||150,boxH=opts.boxH||46,gapX=opts.gapX||24,gapY=opts.gapY||46;
+  const wrap=document.createElement('div');wrap.className='proc-diagram';
+
+  if(!steps.length){
+    const em=document.createElement('div');em.className='cmap-desc';em.style.color='var(--ink3)';
+    em.textContent='Añade pasos para ver el diagrama.';
+    wrap.appendChild(em);return wrap;
+  }
+
+  const{pos,backEdges}=procAutoLayout(steps);
+  const byId={};steps.forEach(s=>byId[s.id]=s);
+
+  const colsByLayer={};
+  steps.forEach(s=>{const p=pos[s.id];colsByLayer[p.layer]=Math.max(colsByLayer[p.layer]||0,p.cols)});
+  const maxCols=Math.max(1,...Object.values(colsByLayer));
+  const totalW=maxCols*(boxW+gapX)-gapX;
+
+  const coords={};
+  steps.forEach(s=>{
+    if(s.x!=null&&s.y!=null){coords[s.id]={x:s.x,y:s.y};return}
+    const p=pos[s.id];
+    const rowW=p.cols*(boxW+gapX)-gapX;
+    const offset=(totalW-rowW)/2;
+    coords[s.id]={x:offset+p.col*(boxW+gapX),y:p.layer*(boxH+gapY)};
+  });
+
+  const padRight=backEdges.size?70:20;
+  const maxX=Math.max(...steps.map(s=>coords[s.id].x))+boxW+padRight;
+  const maxY=Math.max(...steps.map(s=>coords[s.id].y))+boxH+20;
+  wrap.style.width=maxX+'px';wrap.style.height=maxY+'px';
+
+  const svgNS='http://www.w3.org/2000/svg';
+  const svg=document.createElementNS(svgNS,'svg');
+  svg.setAttribute('width',maxX);svg.setAttribute('height',maxY);
+  svg.style.cssText='position:absolute;left:0;top:0;pointer-events:none;overflow:visible';
+  const markerId='procArrow'+Math.random().toString(36).slice(2);
+  svg.innerHTML=`<defs><marker id="${markerId}" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--ink3)"/></marker></defs>`;
+
+  steps.forEach(s=>{
+    (s.from||[]).forEach(fid=>{
+      const src=byId[fid];if(!src)return;                 // referencia colgante: se ignora al dibujar
+      const isBack=backEdges.has(fid+'>'+s.id);
+      const c1=coords[fid],c2=coords[s.id];
+      let d;
+      if(isBack){
+        const rightX=Math.max(c1.x+boxW,c2.x+boxW)+50;
+        const y1=c1.y+boxH/2,y2=c2.y+boxH/2;
+        d=`M${c1.x+boxW},${y1} C${rightX},${y1} ${rightX},${y2} ${c2.x+boxW},${y2}`;
+      }else{
+        const x1=c1.x+boxW/2,y1=c1.y+boxH,x2=c2.x+boxW/2,y2=c2.y,midY=(y1+y2)/2;
+        d=`M${x1},${y1} C${x1},${midY} ${x2},${midY} ${x2},${y2}`;
+      }
+      const path=document.createElementNS(svgNS,'path');
+      path.setAttribute('d',d);path.setAttribute('fill','none');
+      path.setAttribute('stroke','var(--ink3)');path.setAttribute('stroke-width','2');
+      if(isBack)path.setAttribute('stroke-dasharray','5,4');
+      path.setAttribute('marker-end',`url(#${markerId})`);
+      svg.appendChild(path);
+    });
+  });
+  wrap.appendChild(svg);
+
+  steps.forEach(s=>{
+    const c=coords[s.id];
+    const box=document.createElement('div');box.className='proc-box';
+    box.style.left=c.x+'px';box.style.top=c.y+'px';box.style.width=boxW+'px';box.style.minHeight=boxH+'px';
+    const t=document.createElement('div');t.className='proc-box-title';t.textContent=s.title;
+    box.appendChild(t);
+    if(opts.onStepClick){
+      box.style.cursor='pointer';
+      box.addEventListener('click',e=>{e.stopPropagation();opts.onStepClick(s)});
+    }
+    wrap.appendChild(box);
+  });
+
+  return wrap;
 }
 
 /* ══ GLOSARIO · CONCLUSIONES ══ */
