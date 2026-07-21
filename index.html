@@ -1389,8 +1389,8 @@ body.fullscreen #gid-bar{bottom:20px}
     <div class="pal-tabs">
       <button class="pal-tab on" data-pal="pastel">Pastel</button>
       <button class="pal-tab" data-pal="vivos">Vivos</button>
-      <button class="pal-tab" data-pal="tierra">Tierra</button>
       <button class="pal-tab" data-pal="custom">Libre</button>
+      <span id="pal-custom-tabs"></span>
     </div>
     <div id="pal-list"></div>
     <div class="custom-box hidden" id="custom-box">
@@ -1407,6 +1407,18 @@ body.fullscreen #gid-bar{bottom:20px}
       <div class="modal-btns">
         <button class="mbtn cancel" id="pal-close2">Cerrar</button>
         <button class="mbtn ok" id="custom-apply">Usar este color</button>
+      </div>
+
+      <div style="border-top:1px solid var(--border);margin:18px 0 14px;padding-top:14px">
+        <h3 style="margin-bottom:4px">Crea tu propia paleta</h3>
+        <p style="font-size:12.5px;color:var(--ink2);margin-bottom:12px;line-height:1.5">
+          Elige un color para cada categoría. Los cuatro primeros (título,
+          subtítulo, epígrafe y guión) subrayarán con la misma función que
+          en Pastel o Vivos: crearán el mapa conceptual al subrayar.</p>
+        <div id="pal-build-rows"></div>
+        <input id="pal-build-name" type="text" placeholder="Nombre de tu paleta (ej: Cuaderno azul)"
+          style="width:100%;background:var(--bg2);border:none;border-radius:10px;color:var(--ink);font-size:15px;padding:11px;outline:none;margin:10px 0">
+        <button id="pal-build-save" class="mbtn ok" style="width:100%;background:var(--menta)">Guardar mi paleta</button>
       </div>
     </div>
     <div class="modal-btns" id="pal-close-row">
@@ -1512,7 +1524,7 @@ body.fullscreen #gid-bar{bottom:20px}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 'use strict';
-const APP_VER='v83'; // ← súbelo en cada despliegue para comprobar que el iPad se ha actualizado
+const APP_VER='v84'; // ← súbelo en cada despliegue para comprobar que el iPad se ha actualizado
 console.log('LecturaPDF',APP_VER);
 
 /* ══ MARCADOR DE VERSIÓN ══
@@ -1614,20 +1626,65 @@ const PALETTES={
     {c:'#5E5CE6',n:'Índigo',   t:'Muy importante'},
     {c:'#00D1B2',n:'Cian',     t:'Aclaraciones'},
   ]},
-  tierra:{label:'Tierra',colors:[
-    {c:'#D4A373',n:'Ocre',      t:'Títulos generales'},
-    {c:'#B392AC',n:'Malva',     t:'Subtítulos'},
-    {c:'#E07A5F',n:'Terracota', t:'Epígrafes'},
-    {c:'#8DA9C4',n:'Azul gris', t:'Guiones'},
-    {c:'#E9D8A6',n:'Arena',     t:'Hilo conductor'},
-    {c:'#DDA0A8',n:'Rosa viejo',t:'Definiciones'},
-    {c:'#A3B18A',n:'Salvia',    t:'Ejemplos'},
-    {c:'#84A98C',n:'Oliva',     t:'Conclusiones'},
-    {c:'#9D5C63',n:'Granate',   t:'Críticas'},
-    {c:'#C9ADA7',n:'Topo',      t:'Conceptos a repasar'},
-    {c:'#4E9E93',n:'Verde azul',t:'Aclaraciones'},
-  ]},
 };
+/* Elena no usa la paleta Tierra: se retira del selector. Sus colores
+   concretos se conservan como "heredados" más abajo (ver LEGACY_COLORS),
+   para que un documento antiguo subrayado con Tierra siga funcionando
+   exactamente igual — nunca se rompe lo que ya existía. */
+
+/* orden canónico de las 11 categorías (el mismo en las tres paletas de
+   fábrica): sirve de plantilla para construir una paleta propia en "Libre". */
+const CATEGORY_LABELS=['Títulos generales','Subtítulos','Epígrafes','Guiones',
+  'Hilo conductor · ideas clave','Definiciones','Ejemplos y casos','Conclusiones',
+  'Críticas','Conceptos a repasar','Aclaraciones'];
+
+/* paletas creadas por Elena en "Libre": se guardan aparte (preferencia de la
+   interfaz, no dato del documento, como lp_toolcfg) y se mezclan con las de
+   fábrica al arrancar, así el resto del código (barra de colores, ciclo
+   rápido, etc.) no necesita saber que son distintas. */
+function loadCustomPalettes(){try{return JSON.parse(localStorage.getItem('lp_custompals')||'[]')}catch(e){return[]}}
+function saveCustomPalettes(a){try{localStorage.setItem('lp_custompals',JSON.stringify(a))}catch(e){}}
+loadCustomPalettes().forEach(p=>{PALETTES[p.id]=p});
+
+/* ══ QUÉ HACE CADA COLOR AL SUBRAYAR ══
+   Antes cada función (isDefColor, isConcColor…) llevaba su propia lista de
+   códigos de color escrita a mano. Eso impedía que una paleta creada por la
+   usuaria tuviera función: sus colores no estaban en ninguna lista.
+   Ahora la función se deduce de la CATEGORÍA a la que pertenece el color en
+   su paleta, sea de fábrica o propia. Añadir una paleta nueva no exige tocar
+   nada más: sus definiciones crean definiciones, sus títulos crean el mapa
+   conceptual, etc. */
+const CATEGORY_ROLE={
+  'Títulos generales':'titulo',
+  'Subtítulos':'subtitulo',
+  'Subtítulos y apartados':'subtitulo',
+  'Epígrafes':'epigrafe',
+  'Guiones':'guion',
+  'Definiciones':'def',
+  'Conclusiones':'conc',
+  'Aclaraciones':'aclar'
+};
+/* Colores de paletas retiradas o de versiones antiguas. Se conservan SOLO
+   para que los subrayados ya hechos con ellos sigan comportándose igual:
+   nunca se rompe lo que la usuaria ya tiene subrayado. */
+const LEGACY_COLORS=[
+  /* paleta Tierra, retirada a petición de Elena (no la usaba) */
+  {c:'#D4A373',t:'Títulos generales'},{c:'#B392AC',t:'Subtítulos'},
+  {c:'#E07A5F',t:'Epígrafes'},        {c:'#8DA9C4',t:'Guiones'},
+  {c:'#DDA0A8',t:'Definiciones'},     {c:'#84A98C',t:'Conclusiones'},
+  {c:'#4E9E93',t:'Aclaraciones'},
+  /* rosa de una versión anterior que seguía contando como definición */
+  {c:'#F5C7D8',t:'Definiciones'}
+];
+let COLOR_ROLE={};
+function rebuildColorRoles(){
+  COLOR_ROLE={};
+  const add=(c,t)=>{const r=CATEGORY_ROLE[t];if(r&&c)COLOR_ROLE[c.toLowerCase()]=r};
+  LEGACY_COLORS.forEach(x=>add(x.c,x.t));
+  Object.values(PALETTES).forEach(p=>(p.colors||[]).forEach(col=>add(col.c,col.t)));
+}
+rebuildColorRoles();
+function colorRole(c){return COLOR_ROLE[(c||'').toLowerCase()]||null}
 
 /* ══════════════════════════════════════════════════════════════════
    ICONOS  —  set unico de trazo fino (1.6px), esquinas redondeadas.
@@ -2100,22 +2157,128 @@ let curPalTab='pastel';
 document.getElementById('color-chip').onclick=()=>{renderPalTab(curPalTab);modalPal.classList.remove('hidden')};
 document.getElementById('pal-close').onclick=()=>modalPal.classList.add('hidden');
 document.getElementById('pal-close2').onclick=()=>modalPal.classList.add('hidden');
-document.querySelectorAll('.pal-tab').forEach(t=>{t.onclick=()=>{
-  document.querySelectorAll('.pal-tab').forEach(x=>x.classList.remove('on'));t.classList.add('on');
-  curPalTab=t.dataset.pal;renderPalTab(curPalTab);
-  if(curPalTab!=='custom'){barTab=curPalTab;try{localStorage.setItem('lp_bartab',barTab)}catch(e){}buildColorBar()}
-}});
+/* las pestañas de las paletas propias se generan aparte (pueden cambiar) */
+function renderCustomPalTabs(){
+  const box=document.getElementById('pal-custom-tabs');box.innerHTML='';
+  loadCustomPalettes().forEach(p=>{
+    const b=document.createElement('button');
+    b.className='pal-tab'+(curPalTab===p.id?' on':'');
+    b.dataset.pal=p.id;b.textContent=p.label;
+    box.appendChild(b);
+  });
+  wirePalTabs();
+}
+function wirePalTabs(){
+  document.querySelectorAll('.pal-tab').forEach(t=>{t.onclick=()=>{
+    document.querySelectorAll('.pal-tab').forEach(x=>x.classList.remove('on'));t.classList.add('on');
+    curPalTab=t.dataset.pal;renderPalTab(curPalTab);
+    if(curPalTab!=='custom'){barTab=curPalTab;try{localStorage.setItem('lp_bartab',barTab)}catch(e){}buildColorBar()}
+  }});
+}
+wirePalTabs();
 function renderPalTab(tab){
-  if(tab==='custom'){palList.classList.add('hidden');customBox.classList.remove('hidden');palCloseRow.classList.add('hidden');wheelIn.value=toHex6(curColor);hexIn.value=toHex6(curColor);hexPrev.style.background=curColor;return}
+  if(tab==='custom'){
+    palList.classList.add('hidden');customBox.classList.remove('hidden');palCloseRow.classList.add('hidden');
+    wheelIn.value=toHex6(curColor);hexIn.value=toHex6(curColor);hexPrev.style.background=curColor;
+    renderPalBuilder();
+    return;
+  }
   palList.classList.remove('hidden');customBox.classList.add('hidden');palCloseRow.classList.remove('hidden');
   palList.innerHTML='';
-  PALETTES[tab].colors.forEach(col=>{
+  const pal=PALETTES[tab];
+  if(!pal){palList.textContent='';return}
+  pal.colors.forEach(col=>{
     const r=document.createElement('div');r.className='pal-row'+(col.c.toLowerCase()===curColor.toLowerCase()?' sel':'');
     r.innerHTML=`<div class="pal-swatch" style="background:${col.c}"></div><span class="pal-name">${col.n}</span><span class="pal-tag">${col.t}</span>`;
     r.onclick=()=>{setColor(col.c,col.n+' · '+col.t);modalPal.classList.add('hidden')};
     palList.appendChild(r);
   });
+  /* una paleta propia se puede borrar; las de fábrica no */
+  if(pal.custom){
+    const del=document.createElement('button');
+    del.className='mbtn';del.style.cssText='width:100%;margin-top:10px;background:rgba(229,139,139,.18);color:var(--danger)';
+    del.textContent='Eliminar la paleta "'+pal.label+'"';
+    del.onclick=async()=>{
+      const ok=await askConfirm('¿Eliminar la paleta "'+pal.label+'"? Los subrayados que ya hiciste con sus colores NO se borran ni cambian.');
+      if(!ok)return;
+      saveCustomPalettes(loadCustomPalettes().filter(x=>x.id!==pal.id));
+      delete PALETTES[pal.id];
+      /* los colores siguen teniendo función gracias a que quedan registrados
+         como heredados: se recalcula el mapa sin perder los ya subrayados */
+      loadCustomPalettes().forEach(p=>{PALETTES[p.id]=p});
+      (pal.colors||[]).forEach(col=>LEGACY_COLORS.push({c:col.c,t:col.t}));
+      rebuildColorRoles();
+      if(barTab===pal.id){barTab='pastel';try{localStorage.setItem('lp_bartab',barTab)}catch(e){}buildColorBar()}
+      curPalTab='pastel';
+      document.querySelectorAll('.pal-tab').forEach(x=>x.classList.toggle('on',x.dataset.pal==='pastel'));
+      renderCustomPalTabs();renderPalTab('pastel');
+      showTip('Paleta eliminada',1400);
+    };
+    palList.appendChild(del);
+  }
 }
+
+/* ══ CREAR UNA PALETA PROPIA ══
+   Una fila por categoría, con su color. Las categorías con función real
+   (títulos, subtítulos, epígrafes, guiones, definiciones, conclusiones y
+   aclaraciones) se marcan, porque al guardar heredan esa función: subrayar
+   con "Definiciones" de tu paleta creará definiciones igual que en Pastel. */
+let palBuildDraft=null;
+function renderPalBuilder(){
+  const rows=document.getElementById('pal-build-rows');if(!rows)return;
+  if(!palBuildDraft){
+    /* arranca copiando Pastel, así nunca hay huecos sin color */
+    palBuildDraft={};
+    CATEGORY_LABELS.forEach(lbl=>{
+      const src=PALETTES.pastel.colors.find(c=>c.t===lbl);
+      palBuildDraft[lbl]=src?src.c:'#CCCCCC';
+    });
+  }
+  rows.innerHTML='';
+  CATEGORY_LABELS.forEach(lbl=>{
+    const role=CATEGORY_ROLE[lbl];
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:10px;padding:6px 2px';
+    const col=document.createElement('input');
+    col.type='color';col.value=palBuildDraft[lbl];
+    col.style.cssText='width:38px;height:34px;border:none;border-radius:8px;background:none;padding:0;flex-shrink:0;cursor:pointer';
+    col.oninput=()=>{palBuildDraft[lbl]=col.value.toUpperCase()};
+    const name=document.createElement('span');
+    name.style.cssText='flex:1;font-size:13.5px;color:var(--ink)';
+    name.textContent=lbl;
+    row.append(col,name);
+    if(role){
+      const tag=document.createElement('span');
+      tag.style.cssText='font-size:10.5px;font-weight:700;color:var(--ink2);background:var(--bg2);border-radius:8px;padding:3px 7px;flex-shrink:0';
+      tag.textContent='con función';
+      tag.title='Al subrayar con este color se creará automáticamente la ficha correspondiente';
+      row.appendChild(tag);
+    }
+    rows.appendChild(row);
+  });
+}
+document.getElementById('pal-build-save').onclick=()=>{
+  const nameEl=document.getElementById('pal-build-name');
+  const label=nameEl.value.trim();
+  if(!label){showTip('Ponle un nombre a tu paleta');return}
+  const id='cust_'+uid();
+  const pal={id,label,custom:true,colors:CATEGORY_LABELS.map(lbl=>({
+    c:(palBuildDraft&&palBuildDraft[lbl]||'#CCCCCC').toUpperCase(),
+    n:label,          // el "nombre corto" del color: el de la paleta
+    t:lbl             // la categoría: de aquí sale su función al subrayar
+  }))};
+  const all=loadCustomPalettes();all.push(pal);saveCustomPalettes(all);
+  PALETTES[id]=pal;
+  rebuildColorRoles();          // sus colores pasan a tener función YA
+  nameEl.value='';palBuildDraft=null;
+  curPalTab=id;
+  renderCustomPalTabs();
+  document.querySelectorAll('.pal-tab').forEach(x=>x.classList.toggle('on',x.dataset.pal===id));
+  barTab=id;try{localStorage.setItem('lp_bartab',barTab)}catch(e){}
+  buildColorBar();
+  renderPalTab(id);
+  showTip('Paleta "'+label+'" guardada y activada',1800);
+};
 function toHex6(c){return /^#[0-9a-fA-F]{6}$/.test(c)?c:'#F9D5E5'}
 wheelIn.oninput=()=>{hexIn.value=wheelIn.value.toUpperCase();hexPrev.style.background=wheelIn.value};
 hexIn.oninput=()=>{let v=hexIn.value.trim();if(!v.startsWith('#'))v='#'+v;if(/^#[0-9a-fA-F]{6}$/.test(v)){hexPrev.style.background=v;wheelIn.value=v}};
@@ -5931,20 +6094,18 @@ function renderProcDiagram(steps,opts){
   return wrap;
 }
 
-/* ══ GLOSARIO · CONCLUSIONES ══ */
-function isDefColor(c){const defs=['#F9D5E5','#FF2D75','#DDA0A8','#F5C7D8'];return defs.some(d=>d.toLowerCase()===(c||'').toLowerCase())}
-/* colores marcados como "Conclusiones" en las tres paletas */
-function isConcColor(c){const cs=['#BFE8DC','#40C8E0','#84A98C'];return cs.some(d=>d.toLowerCase()===(c||'').toLowerCase())}
-/* colores marcados como "Títulos generales" / "Subtítulos" en las tres paletas:
-   mapa conceptual, nivel 1 y 2 */
-function isTitleColor(c){const cs=['#FFD9A8','#FF9F0A','#D4A373'];return cs.some(d=>d.toLowerCase()===(c||'').toLowerCase())}
-function isSubtitleColor(c){const cs=['#E3D0F5','#BF5AF2','#B392AC'];return cs.some(d=>d.toLowerCase()===(c||'').toLowerCase())}
-/* mapa conceptual, nivel 3 y 4: colores que antes eran "Fechas y datos" y
-   "Autores y citas" (Elena no los usa para eso, reconvertidos a petición suya) */
-function isEpigrafeColor(c){const cs=['#FFC4BC','#FF453A','#E07A5F'];return cs.some(d=>d.toLowerCase()===(c||'').toLowerCase())}
-function isGuionColor(c){const cs=['#C8E7F5','#0A84FF','#8DA9C4'];return cs.some(d=>d.toLowerCase()===(c||'').toLowerCase())}
-/* colores marcados como "Aclaraciones" en las tres paletas (cian/turquesa) */
-function isAclarColor(c){const cs=['#57CFC4','#00D1B2','#4E9E93'];return cs.some(d=>d.toLowerCase()===(c||'').toLowerCase())}
+/* ══ QUÉ GENERA CADA COLOR AL SUBRAYAR ══
+   Ya no llevan listas de códigos escritas a mano: la función sale de la
+   CATEGORÍA del color dentro de su paleta (ver COLOR_ROLE arriba). Así una
+   paleta creada por la usuaria funciona igual que las de fábrica, y los
+   colores de paletas retiradas siguen valiendo (LEGACY_COLORS). */
+function isDefColor(c){return colorRole(c)==='def'}
+function isConcColor(c){return colorRole(c)==='conc'}
+function isTitleColor(c){return colorRole(c)==='titulo'}
+function isSubtitleColor(c){return colorRole(c)==='subtitulo'}
+function isEpigrafeColor(c){return colorRole(c)==='epigrafe'}
+function isGuionColor(c){return colorRole(c)==='guion'}
+function isAclarColor(c){return colorRole(c)==='aclar'}
 
 /* ══════════════════════════════════════════════════════════════════
    ACLARACIONES
@@ -9232,7 +9393,7 @@ updateSyncUI();
       'No se pudo abrir la biblioteca: '+esc(String(err&&err.message||err))+
       '<br>Revisa que el navegador permita almacenamiento para este sitio (no funciona en incognito).</div>');
   }
-  setColor(curColor,curColorLabel);buildColorBar();
+  setColor(curColor,curColorLabel);buildColorBar();renderCustomPalTabs();
   showScreen('browser');
   try{await renderBrowser()}catch(err){console.error('[LecturaPDF] renderBrowser:',err)}
   /* El registro del SW es lo que habilita "Instalar la app". Si falla hay que
