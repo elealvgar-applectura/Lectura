@@ -471,13 +471,21 @@ body.fullscreen #rd-bottom-show{display:none}
 
 /* ═══ MAPA CONCEPTUAL ═══ */
 .cmap-card{background:var(--bg);border:1px solid var(--border);border-radius:12px;margin-bottom:8px;overflow:hidden}
-.cmap-hd{display:flex;align-items:center;gap:8px;padding:10px 12px;cursor:pointer}
+/* flex-wrap: en el panel acoplado del iPad (estrecho) la flecha + título +
+   insignia de tema + botones no cabían en una sola fila, así que el título
+   (flex:1) se comprimía hasta casi 0px y el texto se partía letra a letra,
+   tapado por la insignia o los botones. Con wrap, lo que no cabe (insignia,
+   botones) baja a su propia línea y el título conserva un ancho decente. */
+.cmap-hd{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 12px;cursor:pointer}
 .cmap-arrow{font-size:11px;color:var(--ink2);transition:transform .18s;flex-shrink:0}
 .cmap-arrow.open{transform:rotate(90deg)}
 .cmap-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
 /* El título NO se corta: se estudia leyendo desde el panel, así que un
-   "ESTRUC…" no sirve de nada. Se reparte en varias líneas si hace falta. */
-.cmap-title{font-size:14px;font-weight:600;color:var(--ink);flex:1;min-width:0;line-height:1.32;overflow-wrap:anywhere}
+   "ESTRUC…" no sirve de nada. Se reparte en varias líneas si hace falta.
+   min-width:100px (antes 0) evita que el flex lo aplaste hasta el punto de
+   partir el texto letra a letra: por debajo de eso, mejor que baje de línea
+   la insignia/los botones a que el título se quede sin ancho. */
+.cmap-title{font-size:14px;font-weight:600;color:var(--ink);flex:1;min-width:100px;line-height:1.32;overflow-wrap:anywhere}
 .cmap-pg{font-size:11px;color:var(--ink2);flex-shrink:0}
 .cmap-body-wrap{display:none;padding:0 12px 10px 30px}
 .cmap-body-wrap.open{display:block}
@@ -1556,7 +1564,7 @@ body.fullscreen #gid-bar{bottom:20px}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 'use strict';
-const APP_VER='v88'; // ← súbelo en cada despliegue para comprobar que el iPad se ha actualizado
+const APP_VER='v89'; // ← súbelo en cada despliegue para comprobar que el iPad se ha actualizado
 console.log('LecturaPDF',APP_VER);
 
 /* ══ MARCADOR DE VERSIÓN ══
