@@ -1564,7 +1564,7 @@ body.fullscreen #gid-bar{bottom:20px}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 'use strict';
-const APP_VER='v92'; // ← súbelo en cada despliegue para comprobar que el iPad se ha actualizado
+const APP_VER='v93'; // ← súbelo en cada despliegue para comprobar que el iPad se ha actualizado
 console.log('LecturaPDF',APP_VER);
 
 /* ══ MARCADOR DE VERSIÓN ══
@@ -3109,6 +3109,11 @@ function rebuildPages(){
      sigue siendo válido, así que findIndex NO hace falta rehacerlo. */
   clearFindResults();
   lineCache={};lineBusy={};
+  /* innerHTML='' acaba de tirar todos los canvas, asi que los canceladores de
+     trazo que apuntaban a ellos ya no sirven: hay que vaciarlos ANTES de crear
+     los nuevos. Si no, el array crece sin parar y cada cancelador retiene su
+     canvas en memoria — en el iPad eso acaba en recarga de la pagina. */
+  strokeCancelers.length=0;
   pageOrder.forEach(s=>createPageShell(s.pid));
   updateNav();renderVisiblePages();
   setTimeout(()=>scheduleAnchors(),200);
@@ -3189,6 +3194,12 @@ async function openReader(fileId,fileName){
        limpia, ensurePageText() devuelve el texto del PDF ANTERIOR. lineCache sí
        se vaciaba, por eso el fallo pasaba desapercibido. */
     undoStack.length=0;redoStack.length=0;updateUndoBtns();lineCache={};textCache={};
+    /* Igual que lineCache/textCache: los canceladores del documento anterior
+       apuntan a canvas que ya no existen. Sin esto se acumulaban uno por
+       pagina y por apertura (un libro de 400 paginas abierto tres veces dejaba
+       1200 canvas retenidos), y cancelActiveStrokes() los recorria todos cada
+       2 segundos. */
+    strokeCancelers.length=0;
     clearFindResults();findIndex={};
     pageDims=[null];
     marginCfg=loadMargin();
